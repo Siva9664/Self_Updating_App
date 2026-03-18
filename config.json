@@ -1,0 +1,8 @@
+{
+  "auto_update": {
+    "enabled": true,
+    "check_interval_minutes": 5,
+    "auto_install": true,
+    "show_notification": true
+  }
+}
