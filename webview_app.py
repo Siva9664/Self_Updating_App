@@ -183,51 +183,74 @@ def create_loading_html():
 
 def main():
     """Main entry point"""
-    # Ensure local app directory exists
-    LOCAL_APP_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Check if we should show loading window
-    needs_update = False
-    local_ver = get_local_version()
-    remote_ver = get_remote_version()
-    
-    if remote_ver and compare_versions(local_ver, remote_ver):
-        needs_update = True
-    
-    if needs_update or not (LOCAL_APP_DIR / "app_code").exists():
-        # Show loading window
-        loading_html = create_loading_html()
+    try:
+        # Ensure local app directory exists
+        LOCAL_APP_DIR.mkdir(parents=True, exist_ok=True)
         
-        window = webview.create_window(
-            'Updating...',
-            html=loading_html,
-            width=400,
-            height=300,
-            resizable=False
-        )
+        # Check if we should show loading window
+        needs_update = False
+        local_ver = get_local_version()
+        remote_ver = get_remote_version()
         
-        def update_and_run():
-            if remote_ver:
-                success = download_and_extract(remote_ver, window)
-                if success:
-                    window.destroy()
-                    run_main_app()
-                else:
-                    window.evaluate_js('document.getElementById("status").innerText = "Update failed. Using local version..."')
-                    time.sleep(2)
-                    window.destroy()
-                    run_main_app()
-            else:
-                window.evaluate_js('document.getElementById("status").innerText = "No internet. Using local version..."')
-                time.sleep(2)
-                window.destroy()
-                run_main_app()
+        if remote_ver and compare_versions(local_ver, remote_ver):
+            needs_update = True
         
-        webview.start(update_and_run, window)
-    else:
-        run_main_app()
+        has_local_app = (LOCAL_APP_DIR / "app_code").exists()
+        
+        if (needs_update or not has_local_app) and remote_ver:
+            # Show loading window
+            loading_html = create_loading_html()
+            
+            window = webview.create_window(
+                'Updating...',
+                html=loading_html,
+                width=400,
+                height=300,
+                resizable=False
+            )
+            
+            def update_and_run():
+                try:
+                    if remote_ver:
+                        success = download_and_extract(remote_ver, window)
+                        if success:
+                            run_main_app(window)
+                        else:
+                            if has_local_app:
+                                window.evaluate_js('document.getElementById("status").innerText = "Update failed. Using local version..."')
+                                time.sleep(2)
+                                run_main_app(window)
+                            else:
+                                window.evaluate_js('document.getElementById("status").innerText = "Download failed. Check internet..."')
+                                time.sleep(3)
+                                sys.exit(1)
+                    else:
+                        if has_local_app:
+                            window.evaluate_js('document.getElementById("status").innerText = "No internet. Using local version..."')
+                            time.sleep(2)
+                            run_main_app(window)
+                        else:
+                            window.evaluate_js('document.getElementById("status").innerText = "No internet and no local app..."')
+                            time.sleep(3)
+                            sys.exit(1)
+                except Exception as e:
+                    print(f"Error in update_and_run: {e}")
+                    if has_local_app:
+                        run_main_app(window)
+                    else:
+                        sys.exit(1)
+            
+            webview.start(func=update_and_run)
+        else:
+            run_main_app()
+    except Exception as e:
+        print(f"Main error: {e}")
+        import traceback
+        traceback.print_exc()
+        input("Press Enter to exit...")
+        sys.exit(1)
 
-def run_main_app():
+def run_main_app(window=None):
     """Run the main application"""
     if not (LOCAL_APP_DIR / "app_code").exists():
         print("No app code found. Please connect to internet.")
@@ -236,16 +259,21 @@ def run_main_app():
     # Start the server
     url = run_app()
     
-    # Create main window
-    webview.create_window(
-        'Self-Updating App',
-        url,
-        width=1200,
-        height=800,
-        min_size=(800, 600)
-    )
-    
-    webview.start()
+    if window:
+        # Navigate existing window to the app
+        window.load_url(url)
+        window.set_title('Self-Updating App')
+        window.resize(1200, 800)
+    else:
+        # Create main window
+        webview.create_window(
+            'Self-Updating App',
+            url,
+            width=1200,
+            height=800,
+            min_size=(800, 600)
+        )
+        webview.start()
 
 if __name__ == '__main__':
     main()
