@@ -10,8 +10,8 @@ from typing import Dict, List, Tuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-REMOTE_VERSION_URL = "https://api.github.com/repos/Lalith9664/self_updating_application/releases/latest"
-REMOTE_BASE_URL = "https://github.com/Lalith9664/self_updating_application/releases/download/"
+REMOTE_VERSION_URL = "https://api.github.com/repos/Siva9664/Self_Updating_App/releases/latest"
+REMOTE_BASE_URL = "https://github.com/Siva9664/Self_Updating_App/releases/download/"
 
 LOCAL_VERSION_FILE = "version.json"
 MODULES_DIR = "app/modules"
