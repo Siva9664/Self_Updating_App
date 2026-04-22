@@ -1,0 +1,72 @@
+name: Deploy App
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Increment version
+        id: get_version
+        run: |
+          python -c "
+          import json
+          with open('version.json', 'r') as f:
+            versions = json.load(f)
+          current = versions.get('app', '1.0.0')
+          major, minor, patch = map(int, current.split('.'))
+          patch += 1
+          new_version = f'{major}.{minor}.{patch}'
+          versions['app'] = new_version
+          with open('version.json', 'w') as f:
+            json.dump(versions, f, indent=2)
+          print(f'::set-output name=version::{new_version}')
+          "
+      - name: Create app.zip
+        run: |
+          zip -r app.zip . -x "venv/*" "dist/*" ".git/*" ".github/*" "__pycache__/*" "*.pyc" ".pytest_cache/*"
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            app.zip
+            version.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build-windows-exe:
+    runs-on: windows-latest
+    needs: build-and-deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+      - name: Build exe
+        run: pyinstaller --onefile webview_app.py --name SelfUpdatingApp
+      - name: Upload exe to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.build-and-deploy.outputs.version }}
+          files: dist/SelfUpdatingApp.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

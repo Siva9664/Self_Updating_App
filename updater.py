@@ -10,8 +10,8 @@ from typing import Dict, List, Tuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-REMOTE_VERSION_URL = "http://127.0.0.1:9000/version.json"
-REMOTE_BASE_URL = "http://127.0.0.1:9000"
+REMOTE_VERSION_URL = "https://api.github.com/repos/Lalith9664/self_updating_application/releases/latest"
+REMOTE_BASE_URL = "https://github.com/Lalith9664/self_updating_application/releases/download/"
 
 LOCAL_VERSION_FILE = "version.json"
 MODULES_DIR = "app/modules"
@@ -40,14 +40,17 @@ def get_local_versions() -> Dict[str, str]:
 
 
 def get_remote_versions() -> Dict[str, str]:
-    """Get available module versions from remote server."""
+    """Get available app version from GitHub releases."""
     try:
         logger.info(f"Fetching remote versions from {REMOTE_VERSION_URL}")
         response = requests.get(REMOTE_VERSION_URL, timeout=5)
         response.raise_for_status()
-        versions = response.json()
-        logger.info(f"Remote versions available: {versions}")
-        return versions
+        release = response.json()
+        version = release.get("tag_name", "1.0.0")
+        if version.startswith('v'):
+            version = version[1:]
+        logger.info(f"Remote app version: {version}")
+        return {"app": version}
     except requests.exceptions.ConnectionError:
         logger.error(f"Connection error: Cannot reach update server at {REMOTE_VERSION_URL}")
         return {}
@@ -58,7 +61,7 @@ def get_remote_versions() -> Dict[str, str]:
         logger.error(f"HTTP error: {e.response.status_code}")
         return {}
     except json.JSONDecodeError:
-        logger.error("Remote version file is not valid JSON")
+        logger.error("Remote response is not valid JSON")
         return {}
     except Exception as e:
         logger.error(f"Error fetching remote versions: {e}")
