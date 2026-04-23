@@ -66,7 +66,8 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       - name: Build exe
-        run: pyinstaller --onefile webview_app.py --name SelfUpdatingApp
+        run: |
+          pyinstaller --onefile --hidden-import=requests --hidden-import=webview --hidden-import=uvicorn --hidden-import=fastapi webview_app.py --name SelfUpdatingApp
       - name: Upload exe to release
         uses: softprops/action-gh-release@v1
         with:
