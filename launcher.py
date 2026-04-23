@@ -134,7 +134,7 @@ def wait_for_server(url, max_retries=30):
     return False
 
 def run_application():
-    """Run the main application in a desktop window"""
+    """Run the main application in browser"""
     print("\nStarting application...")
     print("=" * 50)
     
@@ -151,7 +151,6 @@ def run_application():
         # Now import dependencies
         import fastapi
         import uvicorn
-        import webview
         
         # Import app
         from api import app
@@ -170,20 +169,20 @@ def run_application():
         # Wait for server to be ready
         if wait_for_server(server_url):
             print("Server ready!")
-            print("Opening application window...")
+            print("Opening browser...")
             print("=" * 50)
             
-            # Create desktop window with the app
-            window = webview.create_window(
-                'Self-Updating App',
-                server_url,
-                width=1200,
-                height=800,
-                min_size=(800, 600)
-            )
+            # Open browser automatically
+            import webbrowser
+            webbrowser.open(server_url)
             
-            # Start the webview (this blocks until window is closed)
-            webview.start()
+            print("App is running in your browser!")
+            print(f"URL: {server_url}")
+            print("Close this window to stop the server")
+            print("=" * 50)
+            
+            # Keep running until user presses Enter
+            input("\nPress Enter to stop the server...")
             
         else:
             print("Error: Server failed to start")

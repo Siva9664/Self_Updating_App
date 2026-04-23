@@ -10,8 +10,7 @@ a = Analysis(
     binaries=[],
     datas=[],
     hiddenimports=[
-        'ssl', 'urllib', 'json', 'zipfile', 'subprocess', 'pathlib', 'threading',
-        'webview', 'webview.http', 'webview.util', 'webview.screen',
+        'ssl', 'urllib', 'json', 'zipfile', 'subprocess', 'pathlib', 'threading', 'webbrowser',
         'uvicorn', 'uvicorn.config', 'uvicorn.main', 'uvicorn.protocols', 'uvicorn.protocols.http', 'uvicorn.protocols.websockets',
         'uvicorn.lifespan', 'uvicorn.lifespan.on', 'uvicorn.logging',
         'fastapi', 'fastapi.routing', 'fastapi.middleware', 'fastapi.middleware.cors', 'fastapi.middleware.httpsredirect',
