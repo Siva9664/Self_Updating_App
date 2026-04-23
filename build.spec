@@ -12,7 +12,8 @@ a = Analysis(
     hiddenimports=[
         'ssl', 'urllib', 'json', 'zipfile', 'subprocess', 'pathlib', 'threading',
         'webview', 'uvicorn', 'fastapi', 'starlette', 'pydantic', 'anyio', 'sniffio',
-        'click', 'h11', 'certifi', 'idna', 'charset_normalizer', 'urllib3'
+        'click', 'h11', 'certifi', 'idna', 'charset_normalizer', 'urllib3',
+        'typing', 'math', 'random', 'uuid', 'datetime'
     ],
     hookspath=[],
     hooksconfig={},
