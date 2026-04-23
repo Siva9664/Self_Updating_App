@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .version-info {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .calculator {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .display {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            text-align: right;
+        }
+
+        .display input {
+            width: 100%;
+            border: none;
+            font-size: 24px;
+            text-align: right;
+            outline: none;
+            background: transparent;
+        }
+
+        .display .result {
+            font-size: 18px;
+            color: #667eea;
+            margin-top: 5px;
+            min-height: 25px;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        button {
+            padding: 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-number {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-number:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-operator {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-operator:hover {
+            background: #5568d3;
+        }
+
+        .btn-clear {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #ee5a5a;
+        }
+
+        .btn-equals {
+            background: #48bb78;
+            color: white;
+            grid-column: span 2;
+        }
+
+        .btn-equals:hover {
+            background: #38a169;
+        }
+
+        .converters {
+            margin-top: 20px;
+        }
+
+        .converter-section {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .converter-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .converter-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .converter-inputs input, .converter-inputs select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .converter-inputs input {
+            width: 100px;
+        }
+
+        .converter-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .update-available {
+            background: #48bb78;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-left: 10px;
+            font-size: 12px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧮 Calculator App</h1>
+            <p>Self-Updating Application</p>
+        </div>
+
+        <div class="version-info">
+            Version: <span id="currentVersion">Loading...</span>
+            <span class="update-available" id="updateBadge">Update Available!</span>
+        </div>
+
+        <div class="calculator">
+            <div class="display">
+                <input type="text" id="calcInput" placeholder="0" readonly>
+                <div class="result" id="calcResult"></div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-clear" onclick="clearCalc()">C</button>
+                <button class="btn-operator" onclick="appendOperator('/')">/</button>
+                <button class="btn-operator" onclick="appendOperator('*')">×</button>
+                <button class="btn-operator" onclick="deleteLast()">←</button>
+
+                <button class="btn-number" onclick="appendNumber('7')">7</button>
+                <button class="btn-number" onclick="appendNumber('8')">8</button>
+                <button class="btn-number" onclick="appendNumber('9')">9</button>
+                <button class="btn-operator" onclick="appendOperator('-')">-</button>
+
+                <button class="btn-number" onclick="appendNumber('4')">4</button>
+                <button class="btn-number" onclick="appendNumber('5')">5</button>
+                <button class="btn-number" onclick="appendNumber('6')">6</button>
+                <button class="btn-operator" onclick="appendOperator('+')">+</button>
+
+                <button class="btn-number" onclick="appendNumber('1')">1</button>
+                <button class="btn-number" onclick="appendNumber('2')">2</button>
+                <button class="btn-number" onclick="appendNumber('3')">3</button>
+                <button class="btn-operator" onclick="appendOperator('^')">^</button>
+
+                <button class="btn-number" onclick="appendNumber('0')">0</button>
+                <button class="btn-number" onclick="appendNumber('.')">.</button>
+                <button class="btn-equals" onclick="calculate()">=</button>
+            </div>
+        </div>
+
+        <div class="converters">
+            <div class="converter-section">
+                <h3>🌡️ Temperature Converter</h3>
+                <div class="converter-inputs">
+                    <input type="number" id="tempValue" placeholder="Value">
+                    <select id="tempFrom">
+                        <option value="c">°C</option>
+                        <option value="f">°F</option>
+                        <option value="k">K</option>
+                    </select>
+                    <span>to</span>
+                    <select id="tempTo">
+                        <option value="f">°F</option>
+                        <option value="c">°C</option>
+                        <option value="k">K</option>
+                    </select>
+                    <button class="btn-operator" onclick="convertTemp()">Convert</button>
+                </div>
+                <div class="converter-result" id="tempResult"></div>
+            </div>
+
+            <div class="converter-section">
+                <h3>📏 Length Converter</h3>
+                <div class="converter-inputs">
+                    <input type="number" id="lengthValue" placeholder="Value">
+                    <select id="lengthFrom">
+                        <option value="m">m</option>
+                        <option value="km">km</option>
+                        <option value="ft">ft</option>
+                        <option value="in">in</option>
+                    </select>
+                    <span>to</span>
+                    <select id="lengthTo">
+                        <option value="ft">ft</option>
+                        <option value="m">m</option>
+                        <option value="km">km</option>
+                        <option value="in">in</option>
+                    </select>
+                    <button class="btn-operator" onclick="convertLength()">Convert</button>
+                </div>
+                <div class="converter-result" id="lengthResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        App Version: <span id="footerVersion">v1.0.0</span> | 
+        <span id="updateStatus">Checking for updates...</span>
+    </div>
+
+    <script>
+        let currentInput = '';
+
+        function appendNumber(num) {
+            currentInput += num;
+            document.getElementById('calcInput').value = currentInput;
+        }
+
+        function appendOperator(op) {
+            if (currentInput && !isOperator(currentInput.slice(-1))) {
+                currentInput += op;
+                document.getElementById('calcInput').value = currentInput;
+            }
+        }
+
+        function isOperator(char) {
+            return ['+', '-', '*', '/', '^'].includes(char);
+        }
+
+        function clearCalc() {
+            currentInput = '';
+            document.getElementById('calcInput').value = '';
+            document.getElementById('calcResult').textContent = '';
+        }
+
+        function deleteLast() {
+            currentInput = currentInput.slice(0, -1);
+            document.getElementById('calcInput').value = currentInput;
+        }
+
+        async function calculate() {
+            if (!currentInput) return;
+            
+            try {
+                // Replace ^ with ** for Python eval
+                let expression = currentInput.replace(/\^/g, '**');
+                
+                const response = await fetch('/calc/expression', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expression: expression })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('calcResult').textContent = 'Error: ' + data.error;
+                } else {
+                    document.getElementById('calcResult').textContent = '= ' + data.result;
+                }
+            } catch (e) {
+                document.getElementById('calcResult').textContent = 'Error';
+            }
+        }
+
+        async function convertTemp() {
+            const value = document.getElementById('tempValue').value;
+            const from = document.getElementById('tempFrom').value;
+            const to = document.getElementById('tempTo').value;
+            
+            if (!value) return;
+            
+            try {
+                const response = await fetch(`/convert/temperature?value=${value}&from_unit=${from}&to_unit=${to}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('tempResult').textContent = data.error;
+                } else {
+                    document.getElementById('tempResult').textContent = `${value}${from.toUpperCase()} = ${data.result}${to.toUpperCase()}`;
+                }
+            } catch (e) {
+                document.getElementById('tempResult').textContent = 'Error';
+            }
+        }
+
+        async function convertLength() {
+            const value = document.getElementById('lengthValue').value;
+            const from = document.getElementById('lengthFrom').value;
+            const to = document.getElementById('lengthTo').value;
+            
+            if (!value) return;
+            
+            try {
+                const response = await fetch(`/convert/length?value=${value}&from_unit=${from}&to_unit=${to}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('lengthResult').textContent = data.error;
+                } else {
+                    document.getElementById('lengthResult').textContent = `${value}${from} = ${data.result}${to}`;
+                }
+            } catch (e) {
+                document.getElementById('lengthResult').textContent = 'Error';
+            }
+        }
+
+        // Check version on load
+        async function checkVersion() {
+            try {
+                const response = await fetch('/version');
+                const data = await response.json();
+                document.getElementById('currentVersion').textContent = data.current_version;
+                document.getElementById('footerVersion').textContent = 'v' + data.current_version;
+                document.getElementById('updateStatus').textContent = 'App is up to date';
+            } catch (e) {
+                document.getElementById('updateStatus').textContent = 'Offline mode';
+            }
+        }
+
+        checkVersion();
+    </script>
+</body>
+</html>

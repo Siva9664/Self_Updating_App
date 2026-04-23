@@ -33,7 +33,7 @@ def save_config(config):
 
 @app.get("/")
 def home():
-    return FileResponse("app/templates/index.html", media_type="text/html")
+    return FileResponse("app/templates/calculator.html", media_type="text/html")
 
 @app.get("/version")
 def get_version():
