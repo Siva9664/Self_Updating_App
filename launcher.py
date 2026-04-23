@@ -11,6 +11,7 @@ import zipfile
 import urllib.request
 import ssl
 import subprocess
+import threading
 from pathlib import Path
 
 # Configuration
@@ -133,74 +134,60 @@ def wait_for_server(url, max_retries=30):
     return False
 
 def run_application():
-    """Run the main application server"""
-    print("\nStarting application server...")
+    """Run the main application in a desktop window"""
+    print("\nStarting application...")
     print("=" * 50)
     
     try:
         # Change to app directory
         os.chdir(APP_DIR)
         
-        # Create startup script (quiet mode)
-        startup_script = """
-import sys
-import warnings
-warnings.filterwarnings('ignore')
-sys.path.insert(0, '.')
-from api import app
-import uvicorn
-uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning", access_log=False)
-"""
+        # Add app to path for imports
+        sys.path.insert(0, str(APP_DIR))
         
-        # Platform-specific startup info to hide window
-        startupinfo = None
-        if sys.platform == 'win32':
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = 0  # SW_HIDE
+        # Import here to avoid issues during download phase
+        from api import app
+        import uvicorn
+        import webview
         
-        # Run the server (hidden, no console window)
-        process = subprocess.Popen(
-            [sys.executable, '-c', startup_script],
-            cwd=str(APP_DIR),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            startupinfo=startupinfo,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-        )
+        # Start server in background thread
+        server_url = "http://127.0.0.1:8000"
+        
+        def start_server():
+            uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning", access_log=False)
+        
+        server_thread = threading.Thread(target=start_server, daemon=True)
+        server_thread.start()
         
         print("Waiting for server to start...")
         
         # Wait for server to be ready
-        server_url = "http://127.0.0.1:8000"
         if wait_for_server(server_url):
-            print(f"Server ready!")
-            
-            # Open browser automatically
-            import webbrowser
-            print(f"Opening browser: {server_url}")
-            webbrowser.open(server_url)
-            
+            print("Server ready!")
+            print("Opening application window...")
             print("=" * 50)
-            print("App is running in your browser!")
-            print("Close this window to stop the server")
-            print("=" * 50)
+            
+            # Create desktop window with the app
+            window = webview.create_window(
+                'Self-Updating App',
+                server_url,
+                width=1200,
+                height=800,
+                min_size=(800, 600)
+            )
+            
+            # Start the webview (this blocks until window is closed)
+            webview.start()
+            
         else:
-            print("Warning: Server may not have started properly")
-        
-        # Keep launcher running to monitor server
-        try:
-            while True:
-                # Check if process is still running
-                if process.poll() is not None:
-                    print("Server stopped unexpectedly")
-                    break
-                import time
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("\nShutting down...")
-            process.terminate()
+            print("Error: Server failed to start")
+            print("Please check that the app was downloaded correctly.")
+            input("\nPress Enter to exit...")
             
+    except ImportError as e:
+        print(f"Missing dependency: {e}")
+        print("Please ensure pywebview is installed in the app.")
+        input("\nPress Enter to exit...")
     except Exception as e:
         print(f"Error starting app: {e}")
         import traceback

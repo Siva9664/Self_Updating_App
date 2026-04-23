@@ -10,7 +10,9 @@ a = Analysis(
     binaries=[],
     datas=[],
     hiddenimports=[
-        'ssl', 'urllib', 'json', 'zipfile', 'subprocess', 'pathlib'
+        'ssl', 'urllib', 'json', 'zipfile', 'subprocess', 'pathlib', 'threading',
+        'webview', 'uvicorn', 'fastapi', 'starlette', 'pydantic', 'anyio', 'sniffio',
+        'click', 'h11', 'certifi', 'idna', 'charset_normalizer', 'urllib3'
     ],
     hookspath=[],
     hooksconfig={},
