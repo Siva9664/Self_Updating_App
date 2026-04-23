@@ -119,6 +119,19 @@ def download_and_install(version):
             zip_path.unlink()
         return False
 
+def wait_for_server(url, max_retries=30):
+    """Wait for server to be ready"""
+    import time
+    for i in range(max_retries):
+        try:
+            req = urllib.request.Request(url, method='HEAD')
+            with urllib.request.urlopen(req, timeout=2) as response:
+                if response.status == 200:
+                    return True
+        except:
+            time.sleep(0.5)
+    return False
+
 def run_application():
     """Run the main application server"""
     print("\nStarting application server...")
@@ -128,29 +141,62 @@ def run_application():
         # Change to app directory
         os.chdir(APP_DIR)
         
-        # Create startup script
+        # Create startup script (quiet mode)
         startup_script = """
 import sys
+import warnings
+warnings.filterwarnings('ignore')
 sys.path.insert(0, '.')
 from api import app
 import uvicorn
-uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning", access_log=False)
 """
         
-        # Run the server
+        # Platform-specific startup info to hide window
+        startupinfo = None
+        if sys.platform == 'win32':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0  # SW_HIDE
+        
+        # Run the server (hidden, no console window)
         process = subprocess.Popen(
             [sys.executable, '-c', startup_script],
             cwd=str(APP_DIR),
-            creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            startupinfo=startupinfo,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
         )
         
-        print(f"Server started! Open browser to: http://127.0.0.1:8000")
-        print("Press Ctrl+C to stop")
-        print("=" * 50)
+        print("Waiting for server to start...")
         
-        # Wait for server
+        # Wait for server to be ready
+        server_url = "http://127.0.0.1:8000"
+        if wait_for_server(server_url):
+            print(f"Server ready!")
+            
+            # Open browser automatically
+            import webbrowser
+            print(f"Opening browser: {server_url}")
+            webbrowser.open(server_url)
+            
+            print("=" * 50)
+            print("App is running in your browser!")
+            print("Close this window to stop the server")
+            print("=" * 50)
+        else:
+            print("Warning: Server may not have started properly")
+        
+        # Keep launcher running to monitor server
         try:
-            process.wait()
+            while True:
+                # Check if process is still running
+                if process.poll() is not None:
+                    print("Server stopped unexpectedly")
+                    break
+                import time
+                time.sleep(1)
         except KeyboardInterrupt:
             print("\nShutting down...")
             process.terminate()
