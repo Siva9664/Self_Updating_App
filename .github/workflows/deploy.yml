@@ -35,9 +35,13 @@ jobs:
             json.dump(versions, f, indent=2)
           print(f'::set-output name=version::{new_version}')
           "
+      - name: Install dependencies locally
+        run: |
+          pip install -r requirements.txt -t local_packages
+          echo '{"local_packages": "./local_packages"}' > sitecustomize.json
       - name: Create app.zip
         run: |
-          zip -r app.zip . -x "venv/*" "dist/*" ".git/*" ".github/*" "__pycache__/*" "*.pyc" ".pytest_cache/*"
+          zip -r app.zip . -x "venv/*" "dist/*" ".git/*" ".github/*" "__pycache__/*" "*.pyc" ".pytest_cache/*" "build/*"
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1

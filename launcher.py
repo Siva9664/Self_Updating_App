@@ -133,61 +133,25 @@ def wait_for_server(url, max_retries=30):
             time.sleep(0.5)
     return False
 
-def install_dependencies():
-    """Install required dependencies"""
-    print("Installing dependencies...")
-    try:
-        # Install requirements
-        result = subprocess.run(
-            [sys.executable, '-m', 'pip', 'install', '-q', 'fastapi', 'uvicorn', 'pywebview', 'requests'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        print("Dependencies installed successfully!")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to install dependencies: {e}")
-        print("Trying with --user flag...")
-        try:
-            subprocess.run(
-                [sys.executable, '-m', 'pip', 'install', '--user', '-q', 'fastapi', 'uvicorn', 'pywebview', 'requests'],
-                check=True
-            )
-            print("Dependencies installed with --user flag!")
-            return True
-        except:
-            print("Could not install dependencies automatically.")
-            return False
-
 def run_application():
     """Run the main application in a desktop window"""
     print("\nStarting application...")
     print("=" * 50)
     
     try:
-        # Try to import dependencies first
-        try:
-            import fastapi
-            import uvicorn
-            import webview
-        except ImportError:
-            print("Some dependencies are missing. Installing now...")
-            if not install_dependencies():
-                print("\nPlease manually install dependencies:")
-                print(f"  {sys.executable} -m pip install fastapi uvicorn pywebview requests")
-                input("\nPress Enter to exit...")
-                return
-            # Try importing again after installation
-            import fastapi
-            import uvicorn
-            import webview
-        
         # Change to app directory
         os.chdir(APP_DIR)
         
-        # Add app to path for imports
+        # Add local packages and app to path
+        local_packages = APP_DIR / "local_packages"
+        if local_packages.exists():
+            sys.path.insert(0, str(local_packages))
         sys.path.insert(0, str(APP_DIR))
+        
+        # Now import dependencies
+        import fastapi
+        import uvicorn
+        import webview
         
         # Import app
         from api import app
@@ -228,8 +192,9 @@ def run_application():
             
     except ImportError as e:
         print(f"Missing dependency: {e}")
-        print("\nPlease install dependencies manually:")
-        print(f"  {sys.executable} -m pip install fastapi uvicorn pywebview requests")
+        print("\nDependencies should be bundled with the app.")
+        print("Try deleting the app folder and restarting:")
+        print(f"  {APP_DIR}")
         input("\nPress Enter to exit...")
     except Exception as e:
         print(f"Error starting app: {e}")
