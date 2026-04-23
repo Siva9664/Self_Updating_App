@@ -1,22 +1,31 @@
 # -*- mode: python ; coding: utf-8 -*-
+# PyInstaller spec for SelfUpdatingApp
+# Uses only standard library - minimal dependencies
+
+block_cipher = None
 
 a = Analysis(
-    ['loader.py'],
+    ['launcher.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=[
+        'ssl', 'urllib', 'json', 'zipfile', 'subprocess', 'pathlib'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'numpy', 'pandas', 'matplotlib', 'PIL', 'tkinter', 
+        'PyQt5', 'PyQt6', 'wx', 'PySide2', 'PySide6'
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
-    cipher=None,
+    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=None)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
@@ -38,5 +47,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    onefile=True,
 )
