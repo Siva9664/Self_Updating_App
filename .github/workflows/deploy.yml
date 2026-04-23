@@ -39,6 +39,8 @@ jobs:
         run: |
           pip install fastapi uvicorn jinja2 requests -t local_packages
           echo '{"local_packages": "./local_packages"}' > sitecustomize.json
+      - name: Ensure static folder exists
+        run: mkdir -p app/static && touch app/static/.gitkeep
       - name: Create app.zip
         run: |
           zip -r app.zip . -x "venv/*" "dist/*" ".git/*" ".github/*" "__pycache__/*" "*.pyc" ".pytest_cache/*" "build/*"
