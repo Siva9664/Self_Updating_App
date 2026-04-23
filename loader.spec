@@ -1,24 +1,22 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
-
 a = Analysis(
-    ['webview_app.py'],
+    ['loader.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['requests', 'webview', 'uvicorn', 'fastapi', 'jinja2', 'starlette', 'pydantic', 'anyio', 'sniffio', 'click', 'h11', 'certifi', 'idna', 'charset_normalizer', 'urllib3'],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
-    cipher=block_cipher,
+    cipher=None,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
 exe = EXE(
     pyz,

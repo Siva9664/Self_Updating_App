@@ -66,7 +66,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       - name: Build exe
-        run: pyinstaller webview_app.spec
+        run: pyinstaller loader.spec
       - name: Upload exe to release
         uses: softprops/action-gh-release@v1
         with:
