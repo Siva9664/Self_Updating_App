@@ -8,44 +8,51 @@ permissions:
   contents: write
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
+  build-windows-exe:
+    runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.11'
+          
       - name: Increment version
         id: get_version
         run: |
           python -c "
           import json
-          with open('version.json', 'r') as f:
-            versions = json.load(f)
+          try:
+              with open('version.json', 'r') as f:
+                  versions = json.load(f)
+          except Exception:
+              versions = {'app': '1.0.0'}
           current = versions.get('app', '1.0.0')
           major, minor, patch = map(int, current.split('.'))
           patch += 1
           new_version = f'{major}.{minor}.{patch}'
           versions['app'] = new_version
           with open('version.json', 'w') as f:
-            json.dump(versions, f, indent=2)
-          print(f'::set-output name=version::{new_version}')
+              json.dump(versions, f, indent=2)
+          print(f'version={new_version}')
+          with open('version.env', 'w') as f:
+              f.write(new_version)
           "
-      - name: Install dependencies locally (excluding pywebview for Linux compatibility)
+          $NEW_VERSION = Get-Content version.env
+          echo "version=$NEW_VERSION" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+          
+      - name: Install dependencies
         run: |
-          pip install fastapi uvicorn jinja2 requests -t local_packages
-          echo '{"local_packages": "./local_packages"}' > sitecustomize.json
-      - name: Ensure static folder exists
-        run: mkdir -p app/static && touch app/static/.gitkeep
-      - name: Create app.zip
-        run: |
-          zip -r app.zip . -x "venv/*" "dist/*" ".git/*" ".github/*" "__pycache__/*" "*.pyc" ".pytest_cache/*" "build/*"
-      - name: Create Release
-        id: create_release
+          pip install -r requirements.txt
+          pip install pyinstaller
+          
+      - name: Build exe
+        run: pyinstaller --onefile --windowed --name=SelfUpdatingApp --clean --noconfirm app.py
+        
+      - name: Create Release and Upload
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
@@ -53,30 +60,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            app.zip
+            dist/SelfUpdatingApp.exe
             version.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  build-windows-exe:
-    runs-on: windows-latest
-    needs: build-and-deploy
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
-      - name: Build exe
-        run: pyinstaller build.spec
-      - name: Upload exe to release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.build-and-deploy.outputs.version }}
-          files: dist/SelfUpdatingApp.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
