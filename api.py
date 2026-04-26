@@ -40,7 +40,7 @@ def get_version():
     """Get current local app version"""
     versions = get_local_versions()
     return {
-        "current_version": versions.get("module1", "1.0"),
+        "current_version": versions.get("app", "1.0.0"),
         "all_versions": versions
     }
 

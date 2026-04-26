@@ -28,7 +28,7 @@ def get_installed_version():
         if VERSION_FILE.exists():
             with open(VERSION_FILE, 'r') as f:
                 data = json.load(f)
-                return data.get("version", "0.0.0")
+                return data.get("app", "0.0.0")
     except:
         pass
     return "0.0.0"
@@ -109,7 +109,7 @@ def download_and_install(version):
         
         # Save version
         with open(VERSION_FILE, 'w') as f:
-            json.dump({"version": version}, f)
+            json.dump({"app": version}, f)
         
         print("Installation complete!")
         return True
