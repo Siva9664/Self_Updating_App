@@ -34,13 +34,11 @@ def get_installed_version():
     return "0.0.0"
 
 def get_latest_version():
-    """Fetch latest version from GitHub API"""
+    """Fetch latest version from GitHub API with SSL protection"""
     try:
         url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/releases/latest"
-        # Create SSL context that works on all systems
+        # Use proper SSL verification for security
         ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
         
         req = urllib.request.Request(url, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -55,9 +53,24 @@ def get_latest_version():
         print(f"Warning: Could not check for updates ({e})")
         return None
 
+def validate_version(version):
+    """Validate version string format (e.g., 1.0.0) for security"""
+    import re
+    if not version:
+        return False
+    # Only allow valid semver format: x.y.z
+    pattern = r'^[0-9]+\.[0-9]+\.[0-9]+$'
+    return bool(re.match(pattern, version))
+
 def download_and_install(version):
-    """Download app.zip and extract it"""
+    """Download app.zip and extract it with backup protection"""
+    # Validate version before download
+    if not validate_version(version):
+        print(f"Error: Invalid version format: {version}")
+        return False
+    
     zip_path = LOCAL_DIR / "app.zip"
+    backup_dir = LOCAL_DIR / "app_backup"
     
     try:
         print(f"Downloading version {version}...")
@@ -65,10 +78,8 @@ def download_and_install(version):
         # Download URL
         url = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/releases/download/{version}/app.zip"
         
-        # Create SSL context
+        # Use proper SSL verification
         ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
         
         # Download with progress
         req = urllib.request.Request(url, headers={
@@ -91,9 +102,23 @@ def download_and_install(version):
                         percent = (downloaded / total_size) * 100
                         print(f"Progress: {percent:.1f}%", end='\r')
         
-        print("\nExtracting files...")
+        print("\nValidating download...")
+        # Validate zip file
+        if not zipfile.is_zipfile(zip_path):
+            raise ValueError("Downloaded file is not a valid zip file")
         
-        # Remove old app if exists
+        # Create backup of existing app
+        if APP_DIR.exists():
+            print("Creating backup...")
+            if backup_dir.exists():
+                import shutil
+                shutil.rmtree(backup_dir)
+            import shutil
+            shutil.copytree(APP_DIR, backup_dir)
+        
+        print("Extracting files...")
+        
+        # Remove old app
         if APP_DIR.exists():
             import shutil
             shutil.rmtree(APP_DIR)
@@ -107,6 +132,11 @@ def download_and_install(version):
         # Clean up zip
         zip_path.unlink()
         
+        # Clean up backup on success
+        if backup_dir.exists():
+            import shutil
+            shutil.rmtree(backup_dir)
+        
         # Save version
         with open(VERSION_FILE, 'w') as f:
             json.dump({"app": version}, f)
@@ -118,6 +148,16 @@ def download_and_install(version):
         print(f"\nDownload failed: {e}")
         if zip_path.exists():
             zip_path.unlink()
+        # Restore from backup on failure
+        if backup_dir.exists():
+            print("Restoring from backup...")
+            if APP_DIR.exists():
+                import shutil
+                shutil.rmtree(APP_DIR)
+            import shutil
+            shutil.copytree(backup_dir, APP_DIR)
+            shutil.rmtree(backup_dir)
+            print("Restored previous version.")
         return False
 
 def wait_for_server(url, max_retries=30):
