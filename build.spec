@@ -25,7 +25,7 @@ a = Analysis(
         'anyio', 'anyio._core', 'anyio.abc', 'anyio.streams', 'anyio.streams.memory', 'anyio.streams.tls',
         'sniffio', 'click', 'h11', 'h11._connection', 'h11._events', 'h11._headers', 'h11._readers', 'h11._writers',
         'certifi', 'idna', 'charset_normalizer', 'urllib3', 'urllib3.util', 'urllib3.connection', 'urllib3.response',
-        'typing', 'math', 'random', 'uuid', 'datetime', 'logging', 'warnings', 'traceback', 'inspect'
+        'typing', 'math', 'random', 'uuid', 'datetime', 'logging', 'warnings', 'traceback', 'inspect', 're'
     ],
     hookspath=[],
     hooksconfig={},

@@ -1,11 +1,78 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pathlib import Path
 import json
+import time
+import re
+from typing import List, Optional
+import math
+import random
+import uuid
 from updater import check_updates, update_modules, get_local_versions
 
-app = FastAPI()
+app = FastAPI(
+    title="Self-Updating Calculator App",
+    description="Secure calculator with auto-update capability",
+    version="1.0.1"
+)
+
+# Security: CORS - only allow same origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+# Security: Trusted hosts
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["127.0.0.1", "localhost"]
+)
+
+# Rate limiting storage
+request_history = {}
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Rate limiting: max 100 requests per minute per IP"""
+    client_ip = request.client.host
+    current_time = time.time()
+    
+    if client_ip not in request_history:
+        request_history[client_ip] = []
+    
+    # Clean old requests (older than 60 seconds)
+    request_history[client_ip] = [
+        req_time for req_time in request_history[client_ip] 
+        if current_time - req_time < 60
+    ]
+    
+    # Check limit
+    if len(request_history[client_ip]) >= 100:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Rate limit exceeded. Max 100 requests per minute."}
+        )
+    
+    request_history[client_ip].append(current_time)
+    response = await call_next(request)
+    return response
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Add security headers to all responses"""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    return response
 
 # Serve static files and templates
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -34,6 +101,20 @@ def save_config(config):
 @app.get("/")
 def home():
     return FileResponse("app/templates/calculator.html", media_type="text/html")
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring"""
+    return {
+        "status": "healthy",
+        "version": "1.0.1",
+        "timestamp": time.time(),
+        "services": {
+            "calculator": "available",
+            "converters": "available",
+            "utils": "available"
+        }
+    }
 
 @app.get("/version")
 def get_version():
@@ -72,10 +153,45 @@ def update_settings(settings: dict):
 from typing import List, Optional
 import math
 
+def validate_number(value, name="value", allow_zero=True):
+    """Validate numeric input"""
+    if not isinstance(value, (int, float)):
+        raise HTTPException(status_code=400, detail=f"{name} must be a number")
+    if math.isnan(value) or math.isinf(value):
+        raise HTTPException(status_code=400, detail=f"{name} must be a valid number")
+    if not allow_zero and value == 0:
+        raise HTTPException(status_code=400, detail=f"{name} cannot be zero")
+    return value
+
+def validate_expression(expr):
+    """Validate mathematical expression for security"""
+    if not expr or not isinstance(expr, str):
+        return False
+    # Only allow safe characters
+    allowed_pattern = r'^[\d\+\-\*\/\^\(\)\.\s\_a-zA-Z]+$'
+    if not re.match(allowed_pattern, expr):
+        return False
+    # Block dangerous patterns
+    dangerous = ['__', 'import', 'exec', 'eval', 'compile', 'open', 'file', 'os', 'sys', 'subprocess']
+    for pattern in dangerous:
+        if pattern in expr.lower():
+            return False
+    return True
+
 @app.get("/calc/add")
 def calc_add(a: float, b: float):
     """Add two numbers"""
-    return {"operation": "add", "a": a, "b": b, "result": a + b}
+    try:
+        a = validate_number(a, "a")
+        b = validate_number(b, "b")
+        result = a + b
+        if math.isinf(result):
+            raise HTTPException(status_code=400, detail="Result is too large")
+        return {"operation": "add", "a": a, "b": b, "result": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Calculation error: {str(e)}")
 
 @app.get("/calc/subtract")
 def calc_subtract(a: float, b: float):
@@ -90,9 +206,15 @@ def calc_multiply(a: float, b: float):
 @app.get("/calc/divide")
 def calc_divide(a: float, b: float):
     """Divide two numbers"""
-    if b == 0:
-        return {"error": "Cannot divide by zero"}
-    return {"operation": "divide", "a": a, "b": b, "result": a / b}
+    try:
+        a = validate_number(a, "a")
+        b = validate_number(b, "b", allow_zero=False)
+        result = a / b
+        return {"operation": "divide", "a": a, "b": b, "result": round(result, 10)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Calculation error: {str(e)}")
 
 @app.get("/calc/power")
 def calc_power(base: float, exponent: float):
@@ -126,18 +248,35 @@ def calc_expression(expression: dict):
     """Evaluate a mathematical expression safely"""
     try:
         expr = expression.get("expression", "")
+        
+        # Validate expression
+        if not validate_expression(expr):
+            raise HTTPException(status_code=400, detail="Invalid expression format")
+        
+        # Length limit
+        if len(expr) > 500:
+            raise HTTPException(status_code=400, detail="Expression too long (max 500 chars)")
+        
         # Safe evaluation - only allow basic math operators and functions
         allowed_names = {
-            "abs": abs, "max": max, "min": min, "sum": sum,
-            "pow": pow, "round": round, "math": math,
+            "abs": abs, "max": max, "min": min,
+            "pow": pow, "round": round,
             "sin": math.sin, "cos": math.cos, "tan": math.tan,
             "sqrt": math.sqrt, "log": math.log, "log10": math.log10,
             "pi": math.pi, "e": math.e
         }
+        
         result = eval(expr, {"__builtins__": {}}, allowed_names)
+        
+        # Validate result
+        if math.isnan(result) or math.isinf(result):
+            raise HTTPException(status_code=400, detail="Result is not a valid number")
+        
         return {"expression": expr, "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"error": f"Invalid expression: {str(e)}"}
+        raise HTTPException(status_code=400, detail=f"Invalid expression: {str(e)}")
 
 # Unit Converters
 @app.get("/convert/temperature")
